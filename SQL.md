@@ -1,6 +1,110 @@
 # DDL
 我们通常可以将 SQL 分为四类，分别是 DDL（数据定义语言）、DML（数据操作语言）、DQL（数据查询语言）和 DCL（数据控制语言）。
+
 DDL 主要用于创建、删除、修改数据库中的对象，比如创建、删除和修改二维表，核心的关键字包括create、drop和alter；
+
 DML 主要负责数据的插入、删除和更新，关键词包括insert、delete和update；
+
 DQL 负责数据查询，最重要的一个关键词是select；
+
 DCL 通常用于授予和召回权限，核心关键词是grant和revoke。
+
+## 建库建表
+实现一个学校选课系统的数据库。将数据库命名为school，四个关键的实体分别是学院、老师、学生和课程, 其中，学生跟学院是从属关系，这个关系从数量上来讲是多对一关系，因为一个学院可以有多名学生，而一个学生通常只属于一个学院；同理，老师跟学院的从属关系也是多对一关系。一名老师可以讲授多门课程，一门课程如果只有一个授课老师的话，那么课程跟老师也是多对一关系；如果允许多个老师合作讲授一门课程，那么课程和老师就是多对多关系。简单起见，我们将课程和老师设计为多对一关系。学生和课程是典型的多对多关系，因为一个学生可以选择多门课程，一门课程也可以被多个学生选择，而关系型数据库需要借助中间表才能维持维持两个实体的多对多关系。最终，我们的学校选课系统一共有五张表，分别是学院表（tb_college）、学生表（tb_student）、教师表（tb_teacher）、课程表（tb_course）和选课记录表（tb_record），其中选课记录表就是维持学生跟课程多对多关系的中间表。
+
+-- 如果存在名为school的数据库就删除它
+drop database if exists `school`;
+
+-- 创建名为school的数据库并设置默认的字符集和排序方式
+create database `school` default character set utf8mb4 collate utf8mb4_general_ci;
+
+-- 切换到school数据库上下文环境
+use `school`;
+
+-- 创建学院表
+create table `tb_college`
+(
+`col_id` int unsigned auto_increment comment '编号', //该整型字段不允许存储负数，只能存储 0 和正整数。相较于有符号（signed）的 int，可以提供几乎两倍的正数最大值范围。表示该字段会自动自增。每插入一条新数据时，数据库会自动为 col_id 赋值为当前表中最大 col_id 值再加 1，从而无需手动设置该字段。
+`col_name` varchar(50) not null comment '名称', //最长 50 个字符，不允许为空。
+`col_intro` varchar(500) default '' comment '介绍',
+primary key (`col_id`) //设置 col_id 为主键
+) engine=innodb auto_increment=1 comment '学院表'; // InnoDB 作为该表的存储引擎，这张表存储的是学院信息
+
+-- 创建学生表
+create table `tb_student`
+(
+`stu_id` int unsigned not null comment '学号',
+`stu_name` varchar(20) not null comment '姓名',
+`stu_sex` boolean default 1 not null comment '性别',
+`stu_birth` date not null comment '出生日期',
+`stu_addr` varchar(255) default '' comment '籍贯',
+`col_id` int unsigned not null comment '所属学院',
+primary key (`stu_id`),
+constraint `fk_student_col_id` foreign key (`col_id`) references `tb_college` (`col_id`) //表示布尔值（0 或 1）。如果插入数据时未指定该字段的值，则默认自动赋值为 1。
+) engine=innodb comment '学生表';
+
+-- 创建教师表
+create table `tb_teacher`
+(
+`tea_id` int unsigned not null comment '工号',
+`tea_name` varchar(20) not null comment '姓名',
+`tea_title` varchar(10) default '助教' comment '职称',
+`col_id` int unsigned not null comment '所属学院',
+primary key (`tea_id`),
+constraint `fk_teacher_col_id` foreign key (`col_id`) references `tb_college` (`col_id`) //在当前表中（例如 student 表）为字段 col_id 设置一个外键约束，引用另一个表 tb_college 的主键列 col_id，constraint \fk_student_col_id``：这是给外键约束起的名字，方便日后查看或修改该外键。
+) engine=innodb comment '老师表';
+
+-- 创建课程表
+create table `tb_course`
+(
+`cou_id` int unsigned not null comment '编号',
+`cou_name` varchar(50) not null comment '名称',
+`cou_credit` int not null comment '学分',
+`tea_id` int unsigned not null comment '授课老师',
+primary key (`cou_id`),
+constraint `fk_course_tea_id` foreign key (`tea_id`) references `tb_teacher` (`tea_id`)
+) engine=innodb comment '课程表';
+
+-- 创建选课记录表
+create table `tb_record`
+(
+`rec_id` bigint unsigned auto_increment comment '选课记录号',
+`stu_id` int unsigned not null comment '学号',
+`cou_id` int unsigned not null comment '课程编号',
+`sel_date` date not null comment '选课日期',
+`score` decimal(4,1) comment '考试成绩', //decimal(M, D) 指定了一个定点数类型，具有精确的存储方式。其中 4 表示该数值最多可以有 4 位数字（含整数部分和小数部分），1 表示小数部分所占的位数，即小数点后有 1 位。因此，整数部分最多 3 位，小数部分 1 位。举例而言，可以存储的范围大约是 -999.9 ~ 999.9
+primary key (`rec_id`),
+constraint `fk_record_stu_id` foreign key (`stu_id`) references `tb_student` (`stu_id`),
+constraint `fk_record_cou_id` foreign key (`cou_id`) references `tb_course` (`cou_id`),
+constraint `uk_record_stu_cou` unique (`stu_id`, `cou_id`)
+
+
+上面 SQL 中的数据库名、表名、字段名都被反引号（`）包裹起来，反引号并不是必须的，但是却可以解决表名、字段名等跟 SQL 关键字（SQL 中有特殊含义的单词）冲突的问题。
+
+创建数据库时，我们通过default character set utf8mb4指定了数据库默认使用的字符集为utf8mb4（最大4字节的utf-8编码），我们推荐使用该字符集，它也是 MySQL 8.x 默认使用的字符集
+
+在创建表的时候，可以自行选择底层的存储引擎。MySQL 支持多种存储引擎，可以通过show engines命令进行查看。MySQL 5.5 以后的版本默认使用的存储引擎是 InnoDB，它是我们推荐大家使用的存储引擎。InnoDB 是唯一能够支持外键、事务以及行锁的存储引擎
+
+--删除表可以使用drop table
+drop table `tb_student`;
+
+如果学生表已经录入了数据而且该数据被其他表引用了，那么就不能删除学生表，否则上面的操作会报错。
+如果要修改学生表，可以使用alter table
+--学生表添加一个联系电话的列。
+alter table `tb_student` add column `stu_tel` varchar(20) not null comment '联系电话';
+
+--将上面添加的联系电话列删除掉。
+alter table `tb_student` drop column `stu_tel`;
+
+--修改表，修改列的数据类型，将学生表的 stu_sex 修改为字符。
+alter table `tb_student` modify column `stu_sex` char(1) not null default 'M' comment '性别';
+
+--修改表，修改列的命名，将学生表的 stu_sex 修改为 stu_gender。
+alter table `tb_student` change column `stu_sex` `stu_gender` boolean default 1 comment '性别';
+
+--修改表，删除约束条件，例如删除学生表的 col_id 列的外键约束。
+alter table `tb_student` drop foreign key `fk_student_col_id`;
+
+--修改表，添加约束条件，例如给学生表的 col_id 列加上外键约束。
+alter table `tb_student` add foreign key (`col_id`) references `tb_college` (`col_id`);
+) engine=innodb comment '选课记录表';
