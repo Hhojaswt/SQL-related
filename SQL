@@ -108,3 +108,24 @@ alter table `tb_student` drop foreign key `fk_student_col_id`;
 --修改表，添加约束条件，例如给学生表的 col_id 列加上外键约束。
 alter table `tb_student` add foreign key (`col_id`) references `tb_college` (`col_id`);
 ) engine=innodb comment '选课记录表';
+
+
+--向学院表中添加一个学院。
+insert into `tb_college` values (default, '计算机学院', '学习计算机科学与技术的地方');
+
+--推荐大家使用下面这种做法，指定为哪些字段赋值，这样做可以不按照建表时设定的字段顺序赋值，可以按照values前面的元组中给定的字段顺序为字段赋值，但是需要注意，除了允许为null和有默认值的字段外，其他的字段都必须要一一列出并在values后面的元组中为其赋值。如果希望一次性插入多条记录，我们可以在values后面跟上多个元组来实现批量插入，代码如下所示。
+insert into `tb_college` 
+    (`col_name`, `col_intro`) 
+values 
+    ('外国语学院', '学习歪果仁的语言的学院'),
+    ('经济管理学院', '经世济民，治理国家；管理科学，兴国之道'),
+    ('体育学院', '发展体育运动，增强人民体质');
+
+--如果需要从表中删除数据，可以使用delete操作，它可以帮助我们删除指定行或所有行，例如我们要删除编号为1的学院
+delete from `tb_college` where col_id=1;
+
+--如果要修改表中的数据，可以使用update操作，它可以用来删除指定的行或所有的行。例如，我们将学生表中的“杨过”修改为“杨逍”，这里我们假设“杨过”的学号为1001，只有出现在set 关键字后面的=，才具备赋值的能力。
+update `tb_student` set `stu_name`='杨逍' where `stu_id`=1001;
+
+--如果要同时修改学生的姓名和生日，我们可以对上面的update语句稍作修改
+update `tb_student` set `stu_name`='杨逍', `stu_birth`='1975-12-29' where `stu_id`=1001;
