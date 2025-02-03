@@ -336,3 +336,30 @@ select stu_name
 | 王语嫣    |
 | 项少龙    |
 +-----------+
+
+
+可以使用下面的 SQL 来创建一个用户并为其指定访问口令
+create user 'wangdachui'@'%' identified by 'Wang.618';
+
+上面的 SQL 创建了名为 wangdachui 的用户，它的访问口令是 Wang.618，该用户可以从任意主机访问数据库服务器，
+因为 @ 后面使用了可以表示任意多个字符的通配符 %。如果要限制 wangdachui 这个用户只能从 192.168.0.x 这个网段的主机访问数据库服务器，可以按照下面的方式来修改 SQL 语句。
+drop user if exists 'wangdachui'@'%';
+create user 'wangdachui'@'192.168.0.%' identified by 'Wang.618';
+
+用下面的语句为 wangdachui 授予查询 school 数据库学院表（tb_college）的权限。
+grant select on `school`.`tb_college` to 'wangdachui'@'192.168.0.%';
+
+也可以让 wangdachui 对 school 数据库的所有对象都具有查询权限
+grant select on `school`.* to 'wangdachui'@'192.168.0.%';
+
+如果我们希望 wangdachui 还有 insert、delete 和 update 权限，可以使用下面的方式进行操作。
+grant insert, delete, update on `school`.* to 'wangdachui'@'192.168.0.%';
+
+如果我们还想授予 wangdachui 执行 DDL 的权限，可以使用如下所示的 SQL。
+grant create, drop, alter on `school`.* to 'wangdachui'@'192.168.0.%';
+
+如果要召回 wangdachui 对 school 数据库的 insert、delete 和 update 权限
+revoke insert, delete, update on `school`.* from 'wangdachui'@'192.168.0.%';
+
+如果要召回所有的权限，可以按照如下所示的方式进行操作
+revoke all privileges on *.* from 'wangdachui'@'192.168.0.%';
