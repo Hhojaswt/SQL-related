@@ -363,3 +363,78 @@ revoke insert, delete, update on `school`.* from 'wangdachui'@'192.168.0.%';
 
 如果要召回所有的权限，可以按照如下所示的方式进行操作
 revoke all privileges on *.* from 'wangdachui'@'192.168.0.%';
+
+
+# 索引
+关系型数据库中的索引就像一本书的目录，是用来提升查询性能最为重要的手段。这里，我们只介绍使用得最为广泛的 B+ 树索引。B+ 树由根节点、中间节点和叶子节点构成，其中叶子节点用来保存排序后的数据。
+对于 MySQL InnoDB 存储引擎来说，因为它使用的是索引组织表这种数据存储结构，所以主键上的索引就是整张表的数据，而这种索引我们也将其称之为聚集索引（clustered index）。很显然，一张表只能有一个聚集索引。
+我们自己创建的索引都是二级索引（secondary index），更常见的叫法是非聚集索引（non-clustered index）。
+
+如果我们需要经常通过学生姓名来查询学生，那么就应该在学生姓名对应的列上创建索引，通过索引来加速查询。
+create index idx_student_name on tb_student(stuname);
+
+# 视图
+视图是关系型数据库中将一组查询指令构成的结果集组合成可查询的数据表的对象。简单的说，视图就是虚拟的表，但与数据表不同的是，数据表是一种实体结构，而视图是一种虚拟结构
+
+使用视图可以获得以下好处：
+可以将实体数据表隐藏起来，让外部程序无法得知实际的数据结构，降低数据库被攻击的风险。
+在大多数的情况下视图是只读的，外部程序无法直接透过视图修改数据。
+重用 SQL 语句，将高度复杂的查询包装在视图表中，直接访问该视图即可取出需要的数据；也可以将视图视为数据表进行连接查询。
+视图可以返回与实体数据表不同格式的数据，在创建视图的时候可以对数据进行格式化处理。
+
+create view `vw_emp_simple`
+as
+select  `eno`,
+        `ename`,
+        `job`,
+        `dno`
+  from  `tb_emp`;
+有了上面的视图，我们就可以使用之前讲过的 DCL， 限制某些用户只能从视图中获取员工信息，这样员工表中的工资（sal）、补贴（comm）等敏感字段便不会暴露给用户。
+select * from `vw_emp_simple`;
++------+-----------+--------------+-----+
+| eno  | ename     | job          | dno |
++------+-----------+--------------+-----+
+| 1359 | 胡一刀    | 销售员       |  30 |
+| 2056 | 乔峰      | 分析师       |  20 |
+| 3088 | 李莫愁    | 设计师       |  20 |
+| 3211 | 张无忌    | 程序员       |  20 |
+| 3233 | 丘处机    | 程序员       |  20 |
+| 3244 | 欧阳锋    | 程序员       |  20 |
+| 3251 | 张翠山    | 程序员       |  20 |
+| 3344 | 黄蓉      | 销售主管     |  30 |
+| 3577 | 杨过      | 会计         |  10 |
+| 3588 | 朱九真    | 会计         |  10 |
+| 4466 | 苗人凤    | 销售员       |  30 |
+| 5234 | 郭靖      | 出纳         |  10 |
+| 5566 | 宋远桥    | 会计师       |  10 |
+| 7800 | 张三丰    | 总裁         |  20 |
++------+-----------+--------------+-----+
+
+删除视图。
+drop view if exists `vw_emp_simple`;
+
+# 函数
+delimiter $$
+
+create function fn_truncate_string(
+    content varchar(10000), //content：输入的原始字符串，最大长度 10,000 字符。
+    max_length int unsigned //max_length：指定截断长度（只能是非负整数类型 unsigned）。
+) returns varchar(10000) no sql //no sql 一般用于指明该函数不会修改数据库数据
+begin
+    declare result varchar(10000) default content; //声明一个名为 result 的局部变量，初始值设为 content（即输入字符串）。
+    if char_length(content) > max_length then
+        set result = left(content, max_length);
+        set result = concat(result, '……');
+    end if;
+    return result;
+end $$
+
+delimiter ;
+可以在 SQL 中调用 fn_truncate_string(content, max_length) 来自动截断并添加省略号。
+
+select fn_truncate_string('和我在成都的街头走一走，直到所有的灯都熄灭了也不停留', 10) as short_string;
++--------------------------------------+
+| short_string                         |
++--------------------------------------+
+| 和我在成都的街头走一……                 |
++--------------------------------------+
